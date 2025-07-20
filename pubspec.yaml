@@ -1,0 +1,112 @@
+name: voice_invoice_app
+description: تطبيق تحويل الكلام إلى فواتير باللهجة الأردنية
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: ">=3.10.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # UI Components
+  cupertino_icons: ^1.0.2
+  flutter_localizations:
+    sdk: flutter
+  intl: ^0.19.0
+  
+  # Speech Recognition
+  speech_to_text: ^7.1.0
+  flutter_tts: ^4.2.3
+  permission_handler: ^11.4.0
+  
+  # Database
+  sqflite: ^2.4.2
+  path: ^1.9.1
+  shared_preferences: ^2.5.3
+  
+  # PDF Generation
+  pdf: ^3.10.4
+  printing: ^5.11.0
+  path_provider: ^2.1.1
+  
+  # Charts and UI
+  fl_chart: ^1.0.0
+  flutter_staggered_animations: ^1.1.1
+  
+  # State Management
+  provider: ^6.0.5
+  
+  # Date and Time
+  intl_utils: ^2.8.5
+  
+  # File handling
+  file_picker: ^10.2.0
+  share_plus: ^11.0.0
+  
+  # Audio feedback
+  audioplayers: ^6.5.0
+  
+  # Animations
+  lottie: ^2.7.0
+
+  connectivity_plus: ^6.1.4
+  vosk_flutter_2: ^1.0.5
+  device_info_plus: ^11.5.0
+  http: ^1.4.0
+  flutter_audio_capture: ^1.1.11
+  synchronized: ^3.3.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  
+  assets:
+    - assets/images/
+    - assets/sounds/
+    - assets/animations/
+    - assets/models/vosk-model-ar-mgb2-0.4/conf/model.conf
+    - assets/models/vosk-model-ar-mgb2-0.4/conf/mfcc.conf
+    - assets/models/vosk-model-ar-mgb2-0.4/am/final.mdl
+    - assets/models/vosk-model-ar-mgb2-0.4/ivector/final.ie
+    - assets/models/vosk-model-ar-mgb2-0.4/ivector/final.mat
+    - assets/models/vosk-model-ar-mgb2-0.4/ivector/global_cmvn.stats
+    - assets/models/vosk-model-ar-mgb2-0.4/ivector/online_cmvn.conf
+    - assets/models/vosk-model-ar-mgb2-0.4/ivector/final.dubm
+    - assets/models/vosk-model-ar-mgb2-0.4/ivector/final.ie.id
+    - assets/models/vosk-model-ar-mgb2-0.4/ivector/splice.conf
+    - assets/models/vosk-model-ar-mgb2-0.4/graph/HCLG.fst
+    - assets/models/vosk-model-ar-mgb2-0.4/graph/phones.txt
+    - assets/models/vosk-model-ar-mgb2-0.4/graph/words.txt
+    - assets/models/vosk-model-ar-mgb2-0.4/graph/words_bw.txt
+    - assets/models/vosk-model-ar-mgb2-0.4/graph/words_head.txt
+    - assets/models/vosk-model-ar-mgb2-0.4/graph/words_tail.txt
+#    - assets/models/vosk-model-ar-mgb2-0.4/
+  
+  fonts:
+    - family: Cairo
+      fonts:
+        - asset: assets/fonts/Cairo-Black.ttf
+        - asset: assets/fonts/Cairo-Regular.ttf
+        - asset: assets/fonts/Cairo-Bold.ttf
+          weight: 700
+    - family: Tajawal
+      fonts:
+        - asset: assets/fonts/Tajawal-Regular.ttf
+        - asset: assets/fonts/Tajawal-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Tajawal-Bold.ttf
+          weight: 700
+
+flutter_intl:
+  enabled: true
+  arb_dir: lib/l10n
+  output_dir: lib/generated
+  main_locale: ar
+
