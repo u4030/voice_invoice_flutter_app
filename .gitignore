@@ -43,3 +43,69 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Flutter/Dart/Pub related
+.dart_tool/
+.packages
+.pub-cache/
+build/
+flutter_*.png
+flutter_export_environment.sh
+generated_plugin_registrant.dart
+
+# Android related
+android/.gradle/
+android/.idea/
+android/local.properties
+android/**/build/
+android/**/captures/
+
+# iOS related
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework/
+ios/Flutter/Flutter.podspec
+ios/.flutter-plugins
+ios/.flutter-plugins-dependencies
+ios/Flutter/Generated.xcconfig
+ios/Flutter/App.framework
+ios/Runner.xcworkspace
+ios/DerivedData/
+
+# Xcode
+*.xcworkspace
+*.xcuserstate
+*.xcuserdatad
+*.moved-aside
+DerivedData/
+
+# VS Code settings
+.vscode/
+
+# macOS
+macos/Flutter/GeneratedPluginRegistrant.swift
+macos/Pods/
+macos/.symlinks/
+macos/.flutter-plugins
+macos/.flutter-plugins-dependencies
+macos/build/
+
+# Web
+web/.dart_tool/
+web/build/
+
+# Others
+.idea/
+*.iml
+*.log
+*.lock
+
+# Windows
+windows/flutter/ephemeral/
+windows/.dart_tool/
+windows/build/
+
+
+# Ignore Vosk model
+assets/models/vosk-model-ar-mgb2-0.4/
+
