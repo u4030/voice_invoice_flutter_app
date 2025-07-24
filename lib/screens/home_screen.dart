@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
-import '../providers/speech_provider.dart';
-import '../providers/invoice_provider.dart';
-import '../providers/expense_provider.dart';
-import '../widgets/voice_control_widget.dart';
-import '../widgets/home_card_widget.dart';
-import '../widgets/statistics_widget.dart';
-import '../utils/app_theme.dart';
-import '../utils/app_constants.dart';
-import 'invoice_screen.dart' as invoice_screen;
-import 'expenses_screen.dart';
-import 'invoices_list_screen.dart';
-import 'reports_screen.dart';
+import 'package:voice_invoice_app/providers/improved_speech_provider.dart';
+import 'package:voice_invoice_app/providers/invoice_provider.dart';
+import 'package:voice_invoice_app/providers/expense_provider.dart';
+import 'package:voice_invoice_app/widgets/voice_control_widget.dart';
+import 'package:voice_invoice_app/widgets/home_card_widget.dart';
+import 'package:voice_invoice_app/widgets/statistics_widget.dart';
+import 'package:voice_invoice_app/utils/app_theme.dart';
+import 'package:voice_invoice_app/utils/app_constants.dart';
+import 'package:voice_invoice_app/screens/invoice_screen.dart' as invoice_screen;
+import 'package:voice_invoice_app/screens/expenses_screen.dart';
+import 'package:voice_invoice_app/screens/invoices_list_screen.dart';
+import 'package:voice_invoice_app/screens/reports_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -29,11 +29,14 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _initializeApp() async {
-    final speechProvider = Provider.of<SpeechProvider>(context, listen: false);
+    final speechProvider = Provider.of<ImprovedSpeechProvider>(context, listen: false);
     final invoiceProvider = Provider.of<InvoiceProvider>(context, listen: false);
     final expenseProvider = Provider.of<ExpenseProvider>(context, listen: false);
 
-    await speechProvider.initialize(context); // تمرير context هنا
+    // فحص إذا كانت الخدمة غير محدثة، ثم تهيئتها
+    if (!speechProvider.isInitialized) {
+      await speechProvider.initialize(context); // افتراض أن هناك دالة initialize
+    }
     await invoiceProvider.loadInvoices();
     await expenseProvider.loadExpenses();
   }
@@ -54,20 +57,30 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: const Icon(Icons.settings),
             onPressed: () {},
           ),
-          Consumer<SpeechProvider>(
+          Consumer<ImprovedSpeechProvider>(
             builder: (context, speechProvider, child) {
               return IconButton(
-                icon: const Icon(Icons.swap_horiz),
+                icon: Icon(
+                  speechProvider.mode == SpeechMode.online ? Icons.wifi : Icons.wifi_off,
+                  color: Colors.white,
+                ),
                 tooltip: 'تبديل إلى ${speechProvider.useOnlineMode ? 'الوضع الخارجي' : 'الوضع الأونلاين'}',
-                onPressed: () {
-                  speechProvider.switchToOfflineMode(context);
+                onPressed: () async {
+                  if (speechProvider.isListening) {
+                    await speechProvider.stopListening(); // إيقاف الاستماع أولاً
+                  }
+                  if (speechProvider.mode == SpeechMode.online) {
+                    await speechProvider.switchToOfflineMode();
+                  } else {
+                    await speechProvider.switchToOnlineMode();
+                  }
                 },
               );
             },
           ),
         ],
       ),
-      body: Consumer<SpeechProvider>(
+      body: Consumer<ImprovedSpeechProvider>(
         builder: (context, speechProvider, child) {
           return Column(
             children: [
@@ -159,8 +172,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // باقي الدوال (_handleVoiceCommand، _handleTextRecognized، إلخ) كما هي في النسخة السابقة
   void _handleVoiceCommand(String command) {
-    final speechProvider = Provider.of<SpeechProvider>(context, listen: false);
+    final speechProvider = Provider.of<ImprovedSpeechProvider>(context, listen: false);
     print('Handling voice command in HomeScreen: $command');
 
     if (speechProvider.containsNewInvoiceCommand(command)) {
@@ -187,7 +201,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _handleTextRecognized(String text) {
-    final speechProvider = Provider.of<SpeechProvider>(context, listen: false);
+    final speechProvider = Provider.of<ImprovedSpeechProvider>(context, listen: false);
     final invoiceProvider = Provider.of<InvoiceProvider>(context, listen: false);
 
     print('Handling recognized text in HomeScreen: $text');
@@ -197,7 +211,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final scaffoldMessenger = ScaffoldMessenger.of(context);
       scaffoldMessenger.showSnackBar(
         SnackBar(
-          content: Text('تم التعرف على عنصر: ${invoiceItem['description']}'),
+          content: Text('تم التعرف على عنصر: ${invoiceItem['name']}'),
           duration: const Duration(seconds: 2),
         ),
       );
@@ -304,14 +318,14 @@ class _HomeScreenState extends State<HomeScreen> {
     final expenseProvider = Provider.of<ExpenseProvider>(context, listen: false);
 
     expenseProvider.addExpense(
-      description: expenseData['description'],
+      description: expenseData['category'],
       amount: expenseData['amount'],
       category: expenseData['category'] ?? 'غير محدد',
     );
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('تم إضافة مصروف "${expenseData['description']}"'),
+        content: Text('تم إضافة مصروف "${expenseData['category']}"'),
         action: SnackBarAction(
           label: 'عرض المصروفات',
           onPressed: () {
@@ -326,7 +340,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _handleExpenseCommand(String command) {
-    final speechProvider = Provider.of<SpeechProvider>(context, listen: false);
+    final speechProvider = Provider.of<ImprovedSpeechProvider>(context, listen: false);
     final expense = speechProvider.parseExpense(command);
 
     if (expense != null) {

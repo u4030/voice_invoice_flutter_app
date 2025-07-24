@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'providers/speech_provider.dart';
+import 'package:voice_invoice_app/screens/home_screen.dart';
+import 'providers/improved_speech_provider.dart';
 import 'providers/invoice_provider.dart';
 import 'providers/expense_provider.dart';
 import 'screens/splash_screen.dart';
@@ -31,7 +32,7 @@ class VoiceInvoiceApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => SpeechProvider()),
+        ChangeNotifierProvider(create: (_) => ImprovedSpeechProvider()),
         ChangeNotifierProvider(create: (_) => InvoiceProvider()),
         ChangeNotifierProvider(create: (_) => ExpenseProvider()),
       ],
@@ -49,7 +50,7 @@ class VoiceInvoiceApp extends StatelessWidget {
           GlobalWidgetsLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate,
         ],
-        home: const SplashScreen(),
+        home: const HomeScreen(),
       ),
     );
   }
