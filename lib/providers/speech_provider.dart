@@ -30,7 +30,7 @@ class SpeechProvider extends ChangeNotifier {
 
   bool _isInitialized = false;
   bool _isListening = false;
-  bool _useOnlineMode = true;
+  bool _useOnlineMode = true; // الوضع الافتراضي الأونلاين
   bool _isLoading = false;
   String _errorMessage = '';
   String _recognizedText = '';
@@ -40,6 +40,10 @@ class SpeechProvider extends ChangeNotifier {
   bool get isInitialized => _isInitialized;
   bool get isListening => _isListening;
   bool get useOnlineMode => _useOnlineMode;
+  set useOnlineMode(bool value) {
+    _useOnlineMode = value;
+    notifyListeners();
+  }
   bool get isLoading => _isLoading;
   String get errorMessage => _errorMessage;
   String get recognizedText => _recognizedText;
@@ -51,12 +55,7 @@ class SpeechProvider extends ChangeNotifier {
   Function(String)? _onCommand;
   bool _continuous = false;
 
-  void updateErrorMessage(String message) {
-    _errorMessage = message;
-    _state = SpeechState.error;
-    notifyListeners();
-  }
-
+  // الدوال الموجودة في الوثيقة
   String convertArabicDigits(String input) {
     const arabicDigits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
     const englishDigits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
@@ -93,14 +92,10 @@ class SpeechProvider extends ChangeNotifier {
       _speechService = null;
     }
     if (_recognizer != null) {
-      // لا توجد دالة dispose للـ recognizer في هذه المكتبة،
-      // ولكن تعيينه إلى null يضمن إنشاء واحد جديد.
       _recognizer = null;
       print('Vosk recognizer cleared');
     }
     if (_model != null) {
-      // لا توجد دالة dispose للـ model في هذه المكتبة،
-      // ولكن تعيينه إلى null يضمن تحميل واحد جديد عند الحاجة.
       _model = null;
       print('Vosk model cleared');
     }
@@ -271,7 +266,6 @@ class SpeechProvider extends ChangeNotifier {
         print('Reusing existing Vosk recognizer');
       }
 
-      // تحرير SpeechService إذا كان موجودًا
       if (_speechService != null) {
         await _speechService!.stop();
         _speechService = null;
@@ -340,52 +334,43 @@ class SpeechProvider extends ChangeNotifier {
     }
   }
 
-  void switchToOfflineMode(BuildContext context) async {
+  Future<void> switchToOfflineMode(BuildContext context) async {
     await _lock.synchronized(() async {
-      // أوقف الاستماع الحالي قبل أي تبديل
-      if (_isListening) {
-        await stopListening();
-      }
+      if (isListening) await stopListening();
+      if (!_useOnlineMode) return;
 
-      _useOnlineMode = !_useOnlineMode; // تبديل الوضع
+      _useOnlineMode = false;
+      await _disposeVoskResources();
+      _isInitialized = await _initializeVosk(context);
 
-      if (!_useOnlineMode) { // إذا كنا نتحول إلى الوضع الأوفلاين
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => AlertDialog(
-            title: Text('جارٍ التحميل'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 16),
-                Text('يتم تهيئة النظام الثاني (خارج الشبكة)، يرجى الانتظار...'),
-              ],
-            ),
-          ),
-        );
-
-        // نظّف الموارد القديمة قبل التهيئة
-        await _disposeVoskResources();
-
-        _isInitialized = await _initializeVosk(context);
-
-        Navigator.of(context).pop(); // إغلاق الحوار
-
-        if (_isInitialized) {
-          _state = SpeechState.idle;
-          _showFeedback(context, 'تم التبديل إلى الوضع الثاني (خارج الشبكة)');
-        } else {
-          _useOnlineMode = true; // فشل التحويل، ارجع إلى الأونلاين
-          _showFeedback(context, 'فشل التبديل إلى الوضع الثاني، يرجى المحاولة لاحقًا', isError: true);
-        }
-
-      } else { // إذا كنا نرجع إلى الوضع الأونلاين
-        // تخلص تمامًا من موارد Vosk
-        await _disposeVoskResources();
+      if (_isInitialized) {
+        _state = SpeechState.idle;
+        _showFeedback(context, 'تم التبديل إلى الوضع الخارجي');
+      } else {
+        _useOnlineMode = true;
         _isInitialized = await _initializeOnlineSpeech();
-        _showFeedback(context, 'تم الرجوع إلى الوضع الأول (أونلاين)');
+        _showFeedback(context, 'فشل التبديل إلى الوضع الخارجي، تم الرجوع إلى الوضع الأونلاين', isError: true);
+      }
+      notifyListeners();
+    });
+  }
+
+  Future<void> switchToOnlineMode(BuildContext context) async {
+    await _lock.synchronized(() async {
+      if (isListening) await stopListening();
+      if (_useOnlineMode) return;
+
+      _useOnlineMode = true;
+      await _disposeVoskResources();
+      _isInitialized = await _initializeOnlineSpeech();
+
+      if (_isInitialized) {
+        _state = SpeechState.idle;
+        _showFeedback(context, 'تم التبديل إلى الوضع الأونلاين');
+      } else {
+        _useOnlineMode = false;
+        _isInitialized = await _initializeVosk(context);
+        _showFeedback(context, 'فشل التبديل إلى الوضع الأونلاين، تم الرجوع إلى الوضع الخارجي', isError: true);
       }
       notifyListeners();
     });
@@ -628,22 +613,7 @@ class SpeechProvider extends ChangeNotifier {
         ),
       );
     }
-    // تعطيل TTS مؤقتًا
     print('TTS: Message would have been spoken: $message');
-    /*
-    try {
-      await _tts.setLanguage('ar-SA');
-      await _tts.setSpeechRate(0.5);
-      await _tts.setPitch(1.0);
-      await _tts.speak(message);
-      print('TTS: Message spoken: $message');
-    } catch (e) {
-      print('TTS error: $e');
-      _errorMessage = 'خطأ في النص إلى كلام: $e';
-      _state = SpeechState.error;
-      notifyListeners();
-    }
-    */
   }
 
   bool containsNewInvoiceCommand(String command) {
@@ -736,11 +706,17 @@ class SpeechProvider extends ChangeNotifier {
     return null;
   }
 
+  void updateErrorMessage(String message) {
+    _errorMessage = message;
+    _state = SpeechState.error;
+    notifyListeners();
+  }
+
   @override
   void dispose() {
     print('Disposing SpeechProvider resources...');
     _speech.stop();
-    _disposeVoskResources(); // استخدم الدالة الجديدة هنا
+    _disposeVoskResources();
     _audioCapture.stop();
     _tts.stop();
     _isInitialized = false;

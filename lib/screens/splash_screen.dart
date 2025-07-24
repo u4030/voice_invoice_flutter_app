@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart'; // إضافة هذا الاستيراد
 import 'package:provider/provider.dart';
-import '../providers/speech_provider_old.dart';
+import '../providers/speech_provider.dart';
 import 'home_screen.dart';
 import '../utils/permissions.dart';
 import 'package:device_info_plus/device_info_plus.dart';

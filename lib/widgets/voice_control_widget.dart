@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/improved_speech_provider.dart'; // استبدال SpeechProvider
-import '../utils/app_theme.dart';
-import '../utils/app_constants.dart';
+import 'package:voice_invoice_app/providers/speech_provider.dart'; // العودة إلى SpeechProvider
+import 'package:voice_invoice_app/utils/app_theme.dart';
+import 'package:voice_invoice_app/utils/app_constants.dart';
 
 class VoiceControlWidget extends StatefulWidget {
   final Function(String) onVoiceCommand;
@@ -81,14 +81,12 @@ class _VoiceControlWidgetState extends State<VoiceControlWidget> with TickerProv
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<ImprovedSpeechProvider>(
+    return Consumer<SpeechProvider>(
       builder: (context, speechProvider, child) {
-        // إعادة تعيين حالة الرسوم المتحركة عند بدء استماع جديد
         if (speechProvider.isListening && _hasTriggeredSuccessAnimation) {
           _hasTriggeredSuccessAnimation = false;
         }
 
-        // إدارة الرسوم المتحركة بناءً على حالة الاستماع
         if (speechProvider.isListening) {
           _pulseController.repeat(reverse: true);
           _waveController.repeat();
@@ -97,7 +95,6 @@ class _VoiceControlWidgetState extends State<VoiceControlWidget> with TickerProv
           _waveController.stop();
         }
 
-        // تشغيل الرسوم المتحركة الناجحة فقط عند التعرف النهائي
         if (speechProvider.recognizedText.isNotEmpty &&
             !speechProvider.isListening &&
             !_hasTriggeredSuccessAnimation &&
@@ -145,7 +142,6 @@ class _VoiceControlWidgetState extends State<VoiceControlWidget> with TickerProv
               ),
               child: Column(
                 children: [
-                  // عرض مؤشر التقدم أثناء الاستماع أو المعالجة
                   if (speechProvider.isListening)
                     const Padding(
                       padding: EdgeInsets.only(bottom: AppConstants.defaultPadding),
@@ -206,7 +202,6 @@ class _VoiceControlWidgetState extends State<VoiceControlWidget> with TickerProv
                     ),
                   ),
                   const SizedBox(height: AppConstants.defaultPadding),
-                  // إضافة مؤشر مستوى الصوت
                   if (speechProvider.isListening)
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: AppConstants.defaultPadding),
@@ -363,7 +358,7 @@ class _VoiceControlWidgetState extends State<VoiceControlWidget> with TickerProv
     );
   }
 
-  String _getStatusText(ImprovedSpeechProvider speechProvider) {
+  String _getStatusText(SpeechProvider speechProvider) {
     if (speechProvider.isListening) {
       return 'أتحدث الآن... اضغط لإيقاف التسجيل';
     } else if (speechProvider.recognizedText.isNotEmpty) {
@@ -375,7 +370,7 @@ class _VoiceControlWidgetState extends State<VoiceControlWidget> with TickerProv
     }
   }
 
-  void _toggleListening(BuildContext context, ImprovedSpeechProvider speechProvider) {
+  void _toggleListening(BuildContext context, SpeechProvider speechProvider) {
     if (speechProvider.isListening) {
       speechProvider.stopListening().then((_) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -401,7 +396,7 @@ class _VoiceControlWidgetState extends State<VoiceControlWidget> with TickerProv
     }
   }
 
-  void _confirmText(ImprovedSpeechProvider speechProvider) {
+  void _confirmText(SpeechProvider speechProvider) {
     if (speechProvider.recognizedText.isNotEmpty) {
       print('Confirming text in VoiceControlWidget: ${speechProvider.recognizedText}');
       widget.onTextRecognized(speechProvider.recognizedText);
@@ -409,7 +404,7 @@ class _VoiceControlWidgetState extends State<VoiceControlWidget> with TickerProv
     }
   }
 
-  void _clearText(ImprovedSpeechProvider speechProvider) {
+  void _clearText(SpeechProvider speechProvider) {
     print('Clearing text in VoiceControlWidget');
     speechProvider.clearText();
   }

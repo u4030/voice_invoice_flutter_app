@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
-import 'package:voice_invoice_app/providers/improved_speech_provider.dart';
+import 'package:voice_invoice_app/providers/speech_provider.dart';
 import 'package:voice_invoice_app/providers/invoice_provider.dart';
 import 'package:voice_invoice_app/providers/expense_provider.dart';
 import 'package:voice_invoice_app/widgets/voice_control_widget.dart';
@@ -29,13 +29,12 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _initializeApp() async {
-    final speechProvider = Provider.of<ImprovedSpeechProvider>(context, listen: false);
+    final speechProvider = Provider.of<SpeechProvider>(context, listen: false);
     final invoiceProvider = Provider.of<InvoiceProvider>(context, listen: false);
     final expenseProvider = Provider.of<ExpenseProvider>(context, listen: false);
 
-    // فحص إذا كانت الخدمة غير محدثة، ثم تهيئتها
     if (!speechProvider.isInitialized) {
-      await speechProvider.initialize(context); // افتراض أن هناك دالة initialize
+      await speechProvider.initialize(context); // تهيئة الخدمة
     }
     await invoiceProvider.loadInvoices();
     await expenseProvider.loadExpenses();
@@ -57,11 +56,11 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: const Icon(Icons.settings),
             onPressed: () {},
           ),
-          Consumer<ImprovedSpeechProvider>(
+          Consumer<SpeechProvider>(
             builder: (context, speechProvider, child) {
               return IconButton(
                 icon: Icon(
-                  speechProvider.mode == SpeechMode.online ? Icons.wifi : Icons.wifi_off,
+                  speechProvider.useOnlineMode ? Icons.wifi : Icons.wifi_off,
                   color: Colors.white,
                 ),
                 tooltip: 'تبديل إلى ${speechProvider.useOnlineMode ? 'الوضع الخارجي' : 'الوضع الأونلاين'}',
@@ -69,10 +68,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   if (speechProvider.isListening) {
                     await speechProvider.stopListening(); // إيقاف الاستماع أولاً
                   }
-                  if (speechProvider.mode == SpeechMode.online) {
-                    await speechProvider.switchToOfflineMode();
+                  if (speechProvider.useOnlineMode) {
+                    await speechProvider.switchToOfflineMode(context); // إضافة context
                   } else {
-                    await speechProvider.switchToOnlineMode();
+                    speechProvider.useOnlineMode = true; // تعيين الوضع الأونلاين
+                    await speechProvider.initialize(context); // إعادة تهيئة للوضع الأونلاين
                   }
                 },
               );
@@ -80,7 +80,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: Consumer<ImprovedSpeechProvider>(
+      body: Consumer<SpeechProvider>(
         builder: (context, speechProvider, child) {
           return Column(
             children: [
@@ -172,9 +172,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // باقي الدوال (_handleVoiceCommand، _handleTextRecognized، إلخ) كما هي في النسخة السابقة
   void _handleVoiceCommand(String command) {
-    final speechProvider = Provider.of<ImprovedSpeechProvider>(context, listen: false);
+    final speechProvider = Provider.of<SpeechProvider>(context, listen: false);
     print('Handling voice command in HomeScreen: $command');
 
     if (speechProvider.containsNewInvoiceCommand(command)) {
@@ -201,7 +200,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _handleTextRecognized(String text) {
-    final speechProvider = Provider.of<ImprovedSpeechProvider>(context, listen: false);
+    final speechProvider = Provider.of<SpeechProvider>(context, listen: false);
     final invoiceProvider = Provider.of<InvoiceProvider>(context, listen: false);
 
     print('Handling recognized text in HomeScreen: $text');
@@ -211,7 +210,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final scaffoldMessenger = ScaffoldMessenger.of(context);
       scaffoldMessenger.showSnackBar(
         SnackBar(
-          content: Text('تم التعرف على عنصر: ${invoiceItem['name']}'),
+          content: Text('تم التعرف على عنصر: ${invoiceItem['description']}'),
           duration: const Duration(seconds: 2),
         ),
       );
@@ -318,14 +317,14 @@ class _HomeScreenState extends State<HomeScreen> {
     final expenseProvider = Provider.of<ExpenseProvider>(context, listen: false);
 
     expenseProvider.addExpense(
-      description: expenseData['category'],
+      description: expenseData['description'],
       amount: expenseData['amount'],
       category: expenseData['category'] ?? 'غير محدد',
     );
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('تم إضافة مصروف "${expenseData['category']}"'),
+        content: Text('تم إضافة مصروف "${expenseData['description']}"'),
         action: SnackBarAction(
           label: 'عرض المصروفات',
           onPressed: () {
@@ -340,7 +339,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _handleExpenseCommand(String command) {
-    final speechProvider = Provider.of<ImprovedSpeechProvider>(context, listen: false);
+    final speechProvider = Provider.of<SpeechProvider>(context, listen: false);
     final expense = speechProvider.parseExpense(command);
 
     if (expense != null) {

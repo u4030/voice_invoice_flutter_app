@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:voice_invoice_app/screens/home_screen.dart';
-import 'providers/improved_speech_provider.dart';
+import '../providers/speech_provider.dart';
 import 'providers/invoice_provider.dart';
 import 'providers/expense_provider.dart';
 import 'screens/splash_screen.dart';
@@ -32,7 +32,7 @@ class VoiceInvoiceApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => ImprovedSpeechProvider()),
+        ChangeNotifierProvider(create: (_) => SpeechProvider()),
         ChangeNotifierProvider(create: (_) => InvoiceProvider()),
         ChangeNotifierProvider(create: (_) => ExpenseProvider()),
       ],
