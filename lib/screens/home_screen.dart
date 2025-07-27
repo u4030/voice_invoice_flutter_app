@@ -34,7 +34,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final expenseProvider = Provider.of<ExpenseProvider>(context, listen: false);
 
     if (!speechProvider.isInitialized) {
-      await speechProvider.initialize(context); // تهيئة الخدمة
+      await speechProvider.initialize(context);
     }
     await invoiceProvider.loadInvoices();
     await expenseProvider.loadExpenses();
@@ -68,12 +68,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   if (speechProvider.isListening) {
                     await speechProvider.stopListening(); // إيقاف الاستماع أولاً
                   }
-                  if (speechProvider.useOnlineMode) {
-                    await speechProvider.switchToOfflineMode(context); // إضافة context
-                  } else {
-                    speechProvider.useOnlineMode = true; // تعيين الوضع الأونلاين
-                    await speechProvider.initialize(context); // إعادة تهيئة للوضع الأونلاين
-                  }
+                  await speechProvider.switchMode();
                 },
               );
             },

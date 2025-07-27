@@ -32,7 +32,7 @@ class _InvoicesListScreenState extends State<InvoicesListScreen> {
             builder: (context, speechProvider, child) {
               return IconButton(
                 icon: const Icon(Icons.swap_horiz),
-                onPressed: () => speechProvider.switchToOfflineMode(context),
+                onPressed: () => speechProvider.switchMode(),
                 tooltip: 'تبديل الوضع (${speechProvider.useOnlineMode ? 'أول (أونلاين)' : 'ثاني (خارج الشبكة)'})',
                 color: speechProvider.useOnlineMode ? Colors.blue : Colors.green,
               );
