@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -6,6 +7,8 @@ import '../providers/speech_provider.dart';
 import '../widgets/voice_control_widget.dart';
 import '../utils/app_theme.dart';
 import '../utils/app_constants.dart';
+import '../services/command_manager.dart';
+import '../services/nlu_service.dart';
 
 class ExpensesScreen extends StatefulWidget {
   const ExpensesScreen({super.key});
@@ -15,12 +18,25 @@ class ExpensesScreen extends StatefulWidget {
 }
 
 class _ExpensesScreenState extends State<ExpensesScreen> {
+  final _commandManager = CommandManager();
+  StreamSubscription<NluResult>? _nluSubscription;
+
   @override
   void initState() {
     super.initState();
+    final speechProvider = Provider.of<SpeechProvider>(context, listen: false);
+    _nluSubscription = speechProvider.nluResultStream.listen(_handleNluResult);
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<ExpenseProvider>(context, listen: false).loadExpenses();
     });
+  }
+
+  @override
+  void dispose() {
+    _nluSubscription?.cancel();
+    _commandManager.dispose();
+    super.dispose();
   }
 
   @override
@@ -49,10 +65,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 decoration: const BoxDecoration(
                   gradient: AppTheme.primaryGradient,
                 ),
-                child: VoiceControlWidget(
-                  onVoiceCommand: _handleVoiceCommand,
-                  onTextRecognized: _handleTextRecognized,
-                ),
+                child: const VoiceControlWidget(),
               ),
 
               // Expenses List
@@ -89,22 +102,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     );
   }
 
-  void _handleVoiceCommand(String command) {
-    // Handle voice commands
-  }
-
-  void _handleTextRecognized(String text) {
-    final speechProvider = Provider.of<SpeechProvider>(context, listen: false);
-    final expense = speechProvider.parseExpense(text);
-
-    if (expense != null) {
-      final expenseProvider = Provider.of<ExpenseProvider>(context, listen: false);
-      expenseProvider.addExpense(
-        description: expense['description'],
-        amount: expense['amount'],
-        category: expense['category'],
-      );
-    }
+  void _handleNluResult(NluResult result) {
+    _commandManager.executeCommand(result, context);
   }
 
   void _showAddExpenseDialog() {

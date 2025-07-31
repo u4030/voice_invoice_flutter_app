@@ -52,6 +52,9 @@ dependencies:
   # Animations
   lottie: ^2.7.0
 
+  # Wake Word Detection
+  picovoice_flutter: ^2.1.0 # Use a plausible version for Picovoice
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -64,6 +67,9 @@ flutter:
     - assets/images/
     - assets/sounds/
     - assets/animations/
+    - assets/wake-word/
+    - assets/nlu/
+    - assets/intents.json
   
   fonts:
     - family: Cairo

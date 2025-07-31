@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
@@ -13,6 +14,8 @@ import 'invoice_screen.dart' as invoice_screen;
 import 'expenses_screen.dart';
 import 'invoices_list_screen.dart';
 import 'reports_screen.dart';
+import '../services/command_manager.dart';
+import '../services/nlu_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -22,20 +25,40 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final _commandManager = CommandManager();
+  StreamSubscription<NluResult>? _nluSubscription;
+
   @override
   void initState() {
     super.initState();
-    _initializeApp();
+    // Use addPostFrameCallback to ensure the context is mounted before accessing providers.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeApp();
+    });
   }
 
-  Future<void> _initializeApp() async {
+  void _initializeApp() {
     final speechProvider = Provider.of<SpeechProvider>(context, listen: false);
     final invoiceProvider = Provider.of<InvoiceProvider>(context, listen: false);
     final expenseProvider = Provider.of<ExpenseProvider>(context, listen: false);
 
-    await speechProvider.initialize();
-    await invoiceProvider.loadInvoices();
-    await expenseProvider.loadExpenses();
+    // Initialize all providers
+    invoiceProvider.loadInvoices();
+    expenseProvider.loadExpenses();
+    speechProvider.initialize().then((_) {
+      // After initialization, start the wake word listener
+      speechProvider.start();
+    });
+
+    // Listen for NLU results from the provider's stream
+    _nluSubscription = speechProvider.nluResultStream.listen(_handleNluResult);
+  }
+
+  @override
+  void dispose() {
+    _nluSubscription?.cancel();
+    _commandManager.dispose();
+    super.dispose();
   }
 
   @override
@@ -69,10 +92,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     bottomRight: Radius.circular(AppConstants.largeBorderRadius),
                   ),
                 ),
-                child: VoiceControlWidget(
-                  onVoiceCommand: _handleVoiceCommand,
-                  onTextRecognized: _handleTextRecognized,
-                ),
+                child: const VoiceControlWidget(),
               ),
               Expanded(
                 child: SingleChildScrollView(
@@ -148,104 +168,30 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _handleVoiceCommand(String command) {
-    final speechProvider = Provider.of<SpeechProvider>(context, listen: false);
-    print('Handling voice command in HomeScreen: $command');
-
-    if (speechProvider.containsNewInvoiceCommand(command)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('تم التعرف على أمر "فاتورة جديدة"، جاري الإنشاء...'),
-          duration: Duration(seconds: 2),
-        ),
-      );
-      _createNewInvoice();
-    } else if (command.toLowerCase().contains('مصروف')) {
-      _handleExpenseCommand(command);
-    } else if (command.toLowerCase().contains('فواتير') ||
-        command.toLowerCase().contains('سابق')) {
-      _viewInvoices();
-    } else if (command.toLowerCase().contains('تقارير') ||
-        command.toLowerCase().contains('إحصائيات')) {
-      _viewReports();
-    } else if (command.toLowerCase().contains('مصروفات')) {
-      _viewExpenses();
-    } else {
-      print('No voice command matched: $command');
-    }
-  }
-
-  void _handleTextRecognized(String text) {
-    final speechProvider = Provider.of<SpeechProvider>(context, listen: false);
-    final invoiceProvider = Provider.of<InvoiceProvider>(context, listen: false);
-
-    print('Handling recognized text in HomeScreen: $text');
-    final invoiceItem = speechProvider.parseInvoiceItem(text);
-    if (invoiceItem != null) {
-      print('Invoice item detected in HomeScreen: $invoiceItem');
-      final scaffoldMessenger = ScaffoldMessenger.of(context);
-      scaffoldMessenger.showSnackBar(
-        SnackBar(
-          content: Text('تم التعرف على عنصر: ${invoiceItem['description']}'),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-      if (!invoiceProvider.hasCurrentInvoice) {
-        print('Creating new invoice for item: $invoiceItem');
-        invoiceProvider.createNewInvoice().then((_) {
-          if (invoiceProvider.currentInvoice != null) {
-            print('Navigating to InvoiceScreen with item: $invoiceItem');
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => invoice_screen.InvoiceScreen(initialItemData: invoiceItem),
-              ),
-            );
-          } else {
-            print('Failed to create invoice: ${invoiceProvider.errorMessage}');
-            scaffoldMessenger.showSnackBar(
-              SnackBar(content: Text('فشل إنشاء الفاتورة: ${invoiceProvider.errorMessage}')),
-            );
-          }
-        });
-      } else {
-        print('Navigating to InvoiceScreen with existing invoice and item: $invoiceItem');
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => invoice_screen.InvoiceScreen(initialItemData: invoiceItem),
-          ),
-        );
-      }
-      return;
-    }
-
-    final expense = speechProvider.parseExpense(text);
-    if (expense != null) {
-      print('Expense detected in HomeScreen: $expense');
-      _addQuickExpense(expense);
-      return;
-    }
-
-    if (speechProvider.containsNewInvoiceCommand(text)) {
-      print('New invoice command detected: $text');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('تم التعرف على أمر "فاتورة جديدة"، جاري الإنشاء...'),
-          duration: Duration(seconds: 2),
-        ),
-      );
+  void _handleNluResult(NluResult result) {
+    // Special handling for navigation or complex UI changes from HomeScreen
+    if (result.intent == 'create_invoice') {
       _createNewInvoice(showAddItemDialog: true);
-      return;
+    } else if (result.intent == 'add_invoice_item') {
+      // If user says "add item" from home screen, create a new invoice first
+      final invoiceProvider = Provider.of<InvoiceProvider>(context, listen: false);
+      if (!invoiceProvider.hasCurrentInvoice) {
+        invoiceProvider.createNewInvoice().then((_) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const invoice_screen.InvoiceScreen(),
+            ),
+          ).then((_) {
+            // After returning from invoice screen, re-evaluate the command
+            _commandManager.executeCommand(result, context);
+          });
+        });
+      }
     }
-
-    print('No invoice item, expense, or new invoice command detected: $text');
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('لم يتم التعرف على الأمر، حاول مرة أخرى'),
-        duration: Duration(seconds: 2),
-      ),
-    );
+    else {
+      _commandManager.executeCommand(result, context);
+    }
   }
 
   void _createNewInvoice({bool showAddItemDialog = false}) {
@@ -287,41 +233,5 @@ class _HomeScreenState extends State<HomeScreen> {
       context,
       MaterialPageRoute(builder: (context) => const ReportsScreen()),
     );
-  }
-
-  void _addQuickExpense(Map<String, dynamic> expenseData) {
-    final expenseProvider = Provider.of<ExpenseProvider>(context, listen: false);
-
-    expenseProvider.addExpense(
-      description: expenseData['description'],
-      amount: expenseData['amount'],
-      category: expenseData['category'],
-    );
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('تم إضافة مصروف "${expenseData['description']}"'),
-        action: SnackBarAction(
-          label: 'عرض المصروفات',
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const ExpensesScreen()),
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  void _handleExpenseCommand(String command) {
-    final speechProvider = Provider.of<SpeechProvider>(context, listen: false);
-    final expense = speechProvider.parseExpense(command);
-
-    if (expense != null) {
-      _addQuickExpense(expense);
-    } else {
-      _viewExpenses();
-    }
   }
 }

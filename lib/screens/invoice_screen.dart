@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -8,6 +9,8 @@ import '../widgets/voice_control_widget.dart';
 import '../utils/app_theme.dart';
 import '../utils/app_constants.dart';
 import '../services/pdf_service.dart';
+import '../services/command_manager.dart';
+import '../services/nlu_service.dart';
 
 class InvoiceScreen extends StatefulWidget {
   final Map<String, dynamic>? initialItemData;
@@ -25,6 +28,8 @@ class InvoiceScreen extends StatefulWidget {
 
 class _InvoiceScreenState extends State<InvoiceScreen> with SingleTickerProviderStateMixin {
   final _notesController = TextEditingController();
+  final _commandManager = CommandManager();
+  StreamSubscription<NluResult>? _nluSubscription;
   late AnimationController _saveButtonController;
   late Animation<Color?> _saveButtonColor;
 
@@ -33,6 +38,10 @@ class _InvoiceScreenState extends State<InvoiceScreen> with SingleTickerProvider
     super.initState();
     _loadCurrentInvoice();
     _initializeAnimations();
+
+    final speechProvider = Provider.of<SpeechProvider>(context, listen: false);
+    _nluSubscription = speechProvider.nluResultStream.listen(_handleNluResult);
+
     print('InvoiceScreen initState: initialItemData=${widget.initialItemData}, showAddItemDialog=${widget.showAddItemDialog}');
     if (widget.initialItemData != null || widget.showAddItemDialog) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -70,6 +79,8 @@ class _InvoiceScreenState extends State<InvoiceScreen> with SingleTickerProvider
 
   @override
   void dispose() {
+    _nluSubscription?.cancel();
+    _commandManager.dispose();
     _notesController.dispose();
     _saveButtonController.dispose();
     super.dispose();
@@ -108,10 +119,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> with SingleTickerProvider
                 decoration: const BoxDecoration(
                   gradient: AppTheme.primaryGradient,
                 ),
-                child: VoiceControlWidget(
-                  onVoiceCommand: _handleVoiceCommand,
-                  onTextRecognized: _handleTextRecognized,
-                ),
+                child: const VoiceControlWidget(),
               ),
               Expanded(
                 child: SingleChildScrollView(
@@ -352,44 +360,9 @@ class _InvoiceScreenState extends State<InvoiceScreen> with SingleTickerProvider
     );
   }
 
-  void _handleVoiceCommand(String command) {
-    final speechProvider = Provider.of<SpeechProvider>(context, listen: false);
-    print('Handling voice command in InvoiceScreen: $command');
-    if (speechProvider.containsPrintCommand(command)) {
-      print('Detected print command: $command');
-      _printInvoice();
-    } else if (speechProvider.containsSaveCommand(command)) {
-      print('Detected save command: $command');
-      _saveInvoice();
-    } else {
-      print('No action for command: $command');
-    }
-  }
-
-  void _handleTextRecognized(String text) {
-    final speechProvider = Provider.of<SpeechProvider>(context, listen: false);
-    final invoiceProvider = Provider.of<InvoiceProvider>(context, listen: false);
-
-    print('Handling recognized text in InvoiceScreen: $text');
-    final invoiceItem = speechProvider.parseInvoiceItem(text);
-    if (invoiceItem != null) {
-      print('Invoice item detected in InvoiceScreen: $invoiceItem');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('تم التعرف على عنصر: ${invoiceItem['description']}'),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-      _showAddItemDialog(initialItemData: invoiceItem);
-    } else {
-      print('No invoice item detected for text: $text');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('لم يتم التعرف على عنصر، حاول مرة أخرى'),
-          duration: Duration(seconds: 2),
-        ),
-      );
-    }
+  void _handleNluResult(NluResult result) {
+    print('Handling NLU result in InvoiceScreen: ${result.intent}');
+    _commandManager.executeCommand(result, context);
   }
 
   void _addNewItem() {
