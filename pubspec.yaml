@@ -64,7 +64,8 @@ flutter:
     - assets/images/
     - assets/sounds/
     - assets/animations/
-  
+    - assets/intents.json
+
   fonts:
     - family: Cairo
       fonts:

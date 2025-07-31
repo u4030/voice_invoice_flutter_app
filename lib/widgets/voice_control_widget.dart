@@ -5,14 +5,7 @@ import '../utils/app_theme.dart';
 import '../utils/app_constants.dart';
 
 class VoiceControlWidget extends StatefulWidget {
-  final Function(String) onVoiceCommand;
-  final Function(String) onTextRecognized;
-
-  const VoiceControlWidget({
-    super.key,
-    required this.onVoiceCommand,
-    required this.onTextRecognized,
-  });
+  const VoiceControlWidget({super.key});
 
   @override
   State<VoiceControlWidget> createState() => _VoiceControlWidgetState();
@@ -89,14 +82,8 @@ class _VoiceControlWidgetState extends State<VoiceControlWidget> with TickerProv
           _waveController.stop();
         }
 
-        if (speechProvider.recognizedText.isNotEmpty &&
-            (speechProvider.containsNewInvoiceCommand(speechProvider.recognizedText) ||
-                speechProvider.parseInvoiceItem(speechProvider.recognizedText) != null ||
-                speechProvider.containsPrintCommand(speechProvider.recognizedText) ||
-                speechProvider.containsSaveCommand(speechProvider.recognizedText))) {
-          print('Showing success animation for recognized text: ${speechProvider.recognizedText}');
-          Future.delayed(const Duration(milliseconds: 200), _showSuccessAnimation);
-        }
+        // The success animation can be triggered by the parent screen
+        // based on the NLU result if needed.
 
         return Column(
           children: [
@@ -262,19 +249,10 @@ class _VoiceControlWidgetState extends State<VoiceControlWidget> with TickerProv
                         ),
                         const Spacer(),
                         if (speechProvider.recognizedText.isNotEmpty)
-                          Row(
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.check, color: Colors.green),
-                                onPressed: () => _confirmText(speechProvider),
-                                tooltip: 'تأكيد',
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.clear, color: Colors.red),
-                                onPressed: () => _clearText(speechProvider),
-                                tooltip: 'مسح',
-                              ),
-                            ],
+                          IconButton(
+                            icon: const Icon(Icons.clear, color: Colors.red),
+                            onPressed: () => _clearText(speechProvider),
+                            tooltip: 'مسح',
                           ),
                       ],
                     ),
@@ -335,40 +313,26 @@ class _VoiceControlWidgetState extends State<VoiceControlWidget> with TickerProv
   }
 
   String _getStatusText(SpeechProvider speechProvider) {
-    if (speechProvider.state == SpeechState.listening) {
-      return 'أتحدث الآن... اضغط لإيقاف التسجيل';
-    } else if (speechProvider.state == SpeechState.processing) {
-      return 'جاري المعالجة...';
-    } else if (speechProvider.state == SpeechState.error) {
-      return 'حدث خطأ، اضغط للمحاولة مرة أخرى';
-    } else {
-      return 'اضغط على الميكروفون أو قل "فاتورة جديدة"';
+    switch (speechProvider.state) {
+      case VoiceState.listening:
+        return 'يستمع الآن...';
+      case VoiceState.processing:
+        return 'جاري المعالجة...';
+      case VoiceState.error:
+        return 'حدث خطأ، حاول مرة أخرى';
+      case VoiceState.idle:
+      default:
+        return 'اضغط على الميكروفون لبدء الأوامر';
     }
   }
 
   void _toggleListening(SpeechProvider speechProvider) {
     if (speechProvider.isListening) {
+      // This is currently a placeholder as the STT service stops automatically.
+      // In a more advanced implementation, this could cancel the STT process.
       speechProvider.stopListening();
     } else {
-      speechProvider.startListening(
-        onResult: (text) {
-          print('Recognized text: $text');
-          widget.onTextRecognized(text);
-        },
-        onCommand: (text) {
-          print('Command text: $text');
-          widget.onVoiceCommand(text);
-        },
-        continuous: false,
-      );
-    }
-  }
-
-  void _confirmText(SpeechProvider speechProvider) {
-    if (speechProvider.recognizedText.isNotEmpty) {
-      print('Confirming text in VoiceControlWidget: ${speechProvider.recognizedText}');
-      widget.onTextRecognized(speechProvider.recognizedText);
-      speechProvider.clearText();
+      speechProvider.startListening();
     }
   }
 
