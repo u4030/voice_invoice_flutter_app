@@ -170,10 +170,42 @@ class _HomeScreenState extends State<HomeScreen> {
     // Special handling for navigation or complex UI changes from HomeScreen
     if (result.intent == 'create_invoice') {
       _createNewInvoice(showAddItemDialog: true);
+    } else if (result.intent == 'add_invoice_item') {
+      final invoiceProvider = Provider.of<InvoiceProvider>(context, listen: false);
+      final description = result.slots['description'];
+      final priceStr = result.slots['price'];
+      final price = priceStr != null ? double.tryParse(priceStr) : null;
+
+      if (description == null || price == null || price <= 0) {
+        // Let CommandManager handle the feedback for invalid data
+        _commandManager.executeCommand(result, context);
+        return;
+      }
+
+      final itemData = {'description': description, 'amount': price};
+
+      // Ensure there is an active invoice before navigating
+      Future<void>.value()
+          .then((_) {
+        if (!invoiceProvider.hasCurrentInvoice) {
+          return invoiceProvider.createNewInvoice();
+        }
+        return null;
+      })
+          .then((_) {
+        if (invoiceProvider.currentInvoice != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => invoice_screen.InvoiceScreen(
+                initialItemData: itemData,
+                showAddItemDialog: true,
+              ),
+            ),
+          );
+        }
+      });
     } else {
-      // For all other intents, let the CommandManager handle it.
-      // This includes `add_invoice_item`, which now has its own navigation
-      // logic within the CommandManager.
       _commandManager.executeCommand(result, context);
     }
   }

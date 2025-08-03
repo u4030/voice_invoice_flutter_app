@@ -362,7 +362,21 @@ class _InvoiceScreenState extends State<InvoiceScreen> with SingleTickerProvider
 
   void _handleNluResult(NluResult result) {
     print('Handling NLU result in InvoiceScreen: ${result.intent}');
-    _commandManager.executeCommand(result, context);
+    if (result.intent == 'add_invoice_item') {
+      final description = result.slots['description'];
+      final priceStr = result.slots['price'];
+      final price = priceStr != null ? double.tryParse(priceStr) : null;
+
+      if (description != null && price != null && price > 0) {
+        final itemData = {'description': description, 'amount': price};
+        _showAddItemDialog(initialItemData: itemData);
+      } else {
+        // Let CommandManager handle the feedback for invalid data
+        _commandManager.executeCommand(result, context);
+      }
+    } else {
+      _commandManager.executeCommand(result, context);
+    }
   }
 
   void _addNewItem() {

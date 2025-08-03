@@ -6,7 +6,6 @@ import '../providers/invoice_provider.dart';
 import '../providers/speech_provider.dart';
 import '../providers/expense_provider.dart';
 import '../services/pdf_service.dart';
-import '../screens/invoice_screen.dart' as invoice_screen;
 
 class CommandManager {
   final AudioPlayer _audioPlayer = AudioPlayer();
@@ -73,50 +72,27 @@ class CommandManager {
   }
 
   void _handleAddInvoiceItem(NluResult result, InvoiceProvider invoiceProvider, BuildContext context) {
-    print('Handling addInvoiceItem intent with navigation.');
+    print('Handling addInvoiceItem intent.');
+
+    if (invoiceProvider.currentInvoice == null) {
+      _showFeedback(context, "الرجاء تحديد فاتورة أولاً، مثلاً 'اعرض الفاتورة رقم 5'.");
+      return;
+    }
 
     final description = result.slots['description'];
     final priceStr = result.slots['price'];
     final price = priceStr != null ? double.tryParse(priceStr) : null;
 
-    if (description == null || price == null || price <= 0) {
-      _showFeedback(context, "لم أتمكن من تحديد العنصر أو السعر. حاول أن تقول 'أضف [العنصر] بسعر [السعر]'.");
-      return;
-    }
-
-    final itemData = {'description': description, 'amount': price};
-
-    // If there is no active invoice, create one and then navigate to the
-    // invoice screen, which will then show the pre-filled "add item" dialog.
-    if (invoiceProvider.currentInvoice == null) {
-      invoiceProvider.createNewInvoice().then((_) {
-        if (invoiceProvider.currentInvoice != null) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => invoice_screen.InvoiceScreen(
-                initialItemData: itemData,
-                showAddItemDialog: true,
-              ),
-            ),
-          );
-        }
-      });
-    } else {
-      // If an invoice is already active, just show the dialog on the
-      // existing screen. This requires navigating to the screen which might
-      // already be in the stack. A cleaner approach for a future refactor
-      // might be a global event bus, but for now, this ensures the user
-      // sees the dialog.
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => invoice_screen.InvoiceScreen(
-            initialItemData: itemData,
-            showAddItemDialog: true,
-          ),
-        ),
+    if (description != null && price != null && price > 0) {
+      invoiceProvider.addItemToCurrentInvoice(
+        description: description,
+        price: price,
+        total: price,
       );
+      _showFeedback(context, 'تمت إضافة "$description" إلى الفاتورة.');
+      invoiceProvider.saveCurrentInvoice();
+    } else {
+      _showFeedback(context, "لم أتمكن من تحديد العنصر أو السعر. حاول أن تقول 'أضف [العنصر] بسعر [السعر]'.");
     }
   }
 
