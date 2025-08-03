@@ -36,10 +36,11 @@
   {
     "intent": "add_invoice_item",
     "patterns": [
-      "ضيفلي {description} {price} دينار",
-      "ضيف {description} بسعر {price}",
-      "سجل {description} {price} دينار",
-      "سجلي عندك {description} بسعر {price}"
+      "ضيفلي",
+      "سجلي",
+      "ضيف لي",
+      "ضيف لي عندك",
+      "سجلي عندك"
     ],
     "response": "تمت إضافة العنصر."
   },

@@ -170,24 +170,10 @@ class _HomeScreenState extends State<HomeScreen> {
     // Special handling for navigation or complex UI changes from HomeScreen
     if (result.intent == 'create_invoice') {
       _createNewInvoice(showAddItemDialog: true);
-    } else if (result.intent == 'add_invoice_item') {
-      // If user says "add item" from home screen, create a new invoice first
-      final invoiceProvider = Provider.of<InvoiceProvider>(context, listen: false);
-      if (!invoiceProvider.hasCurrentInvoice) {
-        invoiceProvider.createNewInvoice().then((_) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const invoice_screen.InvoiceScreen(),
-            ),
-          ).then((_) {
-            // After returning from invoice screen, re-evaluate the command
-            _commandManager.executeCommand(result, context);
-          });
-        });
-      }
-    }
-    else {
+    } else {
+      // For all other intents, let the CommandManager handle it.
+      // This includes `add_invoice_item`, which now has its own navigation
+      // logic within the CommandManager.
       _commandManager.executeCommand(result, context);
     }
   }

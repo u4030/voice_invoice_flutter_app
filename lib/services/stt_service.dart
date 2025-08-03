@@ -19,6 +19,7 @@ class SttService {
           if (!completer.isCompleted) {
             completer.complete(recognizedWords);
           }
+          _speech.stop();
         }
       },
       onError: (error) {
