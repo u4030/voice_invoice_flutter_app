@@ -5,6 +5,7 @@ import '../models/nlu_result.dart';
 import '../providers/invoice_provider.dart';
 import '../providers/speech_provider.dart';
 import '../providers/expense_provider.dart';
+import '../services/pdf_service.dart';
 
 class CommandManager {
   final AudioPlayer _audioPlayer = AudioPlayer();
@@ -52,6 +53,10 @@ class CommandManager {
 
       case 'add_expense':
         _handleAddExpense(result, expenseProvider, context);
+        break;
+
+      case 'print_invoice':
+        _handlePrintInvoice(invoiceProvider, context);
         break;
 
       default:
@@ -243,5 +248,17 @@ class CommandManager {
     if (playSound) {
       // _audioPlayer.play(AssetSource('sounds/ding.mp3'));
     }
+  }
+
+  void _handlePrintInvoice(InvoiceProvider invoiceProvider, BuildContext context) {
+    print('Handling printInvoice intent.');
+
+    if (invoiceProvider.currentInvoice == null) {
+      _showFeedback(context, "الرجاء تحديد فاتورة أولاً ليتم طباعتها.");
+      return;
+    }
+
+    PdfService.generateAndPrintInvoice(invoiceProvider.currentInvoice!);
+    _showFeedback(context, "جاري طباعة الفاتورة...");
   }
 }

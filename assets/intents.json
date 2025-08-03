@@ -6,7 +6,7 @@
   },
   {
     "intent": "create_invoice",
-    "patterns": ["بدي فاتوره", "ابدأ فاتوره", "أريد فاتورة"],
+    "patterns": ["أنشئ فاتورة", "ابدأ فاتورة", "أريد فاتورة"],
     "response": "حسنًا، جاري إنشاء فاتورة جديدة."
   },
   {
@@ -32,5 +32,24 @@
     "intent": "fallback",
     "patterns": [],
     "response": "عذرًا، لم أفهم الأمر. ممكن تعيد بصيغة أخرى؟"
+  },
+  {
+    "intent": "add_invoice_item",
+    "patterns": [
+      "ضيفلي {description} {price} دينار",
+      "ضيف {description} بسعر {price}",
+      "سجل {description} {price} دينار",
+      "سجلي عندك {description} بسعر {price}"
+    ],
+    "response": "تمت إضافة العنصر."
+  },
+  {
+    "intent": "print_invoice",
+    "patterns": [
+      "اطبع الفاتورة",
+      "طباعة",
+      "اطبع"
+    ],
+    "response": "جاري طباعة الفاتورة."
   }
 ]
