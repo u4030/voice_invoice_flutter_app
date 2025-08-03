@@ -241,7 +241,7 @@ class CommandManager {
 
     // 3. Play an audio cue
     if (playSound) {
-      _audioPlayer.play(AssetSource('sounds/ding.mp3'));
+      // _audioPlayer.play(AssetSource('sounds/ding.mp3'));
     }
   }
 }
