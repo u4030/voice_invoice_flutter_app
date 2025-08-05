@@ -21,7 +21,7 @@ class SttService {
     }
   }
 
-  Future<String?> listen({Duration listenDuration = const Duration(seconds: 5)}) async {
+  Future<String?> listen({Duration listenDuration = const Duration(seconds: 10)}) async {
     // Check microphone permission
     if (!await _checkMicrophonePermission()) {
       print('Microphone permission denied');
@@ -41,6 +41,7 @@ class SttService {
     try {
       await _speech.listen(
         onResult: (result) {
+          print('Speech recognition result: ${result.recognizedWords}, final: ${result.finalResult}');
           if (result.finalResult) {
             recognizedWords = result.recognizedWords;
             if (!completer.isCompleted) {
@@ -49,14 +50,12 @@ class SttService {
           }
         },
         onSoundLevelChange: (level) {
-          // Optional: Monitor sound level for debugging
           print('Sound level: $level');
         },
         listenFor: listenDuration,
-        localeId: 'ar_SA',
+        localeId: 'ar', // Try 'ar' instead of 'ar_SA' for better recognition
       );
 
-      // Use timeout to ensure the listening stops after the specified duration
       return await completer.future.timeout(
         listenDuration + const Duration(seconds: 1),
         onTimeout: () async {

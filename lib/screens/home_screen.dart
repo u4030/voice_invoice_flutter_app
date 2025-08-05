@@ -167,34 +167,37 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _handleNluResult(NluResult result) {
-    // Special handling for navigation or complex UI changes from HomeScreen
-    if (result.intent == 'create_invoice') {
-      _createNewInvoice(showAddItemDialog: true);
-    } else if (result.intent == 'add_invoice_item') {
-      final invoiceProvider = Provider.of<InvoiceProvider>(context, listen: false);
-      final description = result.slots['description'];
-      final priceStr = result.slots['price'];
-      final price = priceStr != null ? double.tryParse(priceStr) : null;
+    // This is the single point of truth for handling NLU results on this screen.
+    // It manages the stream subscription to prevent multiple listeners.
+    _nluSubscription?.cancel();
 
-      if (description == null || price == null || price <= 0) {
-        // Let CommandManager handle the feedback for invalid data
-        _commandManager.executeCommand(result, context);
-        return;
-      }
+    Future<void>(() async {
+      if (result.intent == 'create_invoice') {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const invoice_screen.InvoiceScreen(showAddItemDialog: true),
+          ),
+        );
+      } else if (result.intent == 'add_invoice_item') {
+        final invoiceProvider = Provider.of<InvoiceProvider>(context, listen: false);
+        final description = result.slots['description'];
+        final priceStr = result.slots['price'];
+        final price = priceStr != null ? double.tryParse(priceStr) : null;
 
-      final itemData = {'description': description, 'amount': price};
-
-      // Ensure there is an active invoice before navigating
-      Future<void>.value()
-          .then((_) {
-        if (!invoiceProvider.hasCurrentInvoice) {
-          return invoiceProvider.createNewInvoice();
+        if (description == null || price == null || price <= 0) {
+          _commandManager.executeCommand(result, context);
+          return;
         }
-        return null;
-      })
-          .then((_) {
-        if (invoiceProvider.currentInvoice != null) {
-          Navigator.push(
+
+        final itemData = {'description': description, 'amount': price};
+
+        if (!invoiceProvider.hasCurrentInvoice) {
+          await invoiceProvider.createNewInvoice();
+        }
+
+        if (invoiceProvider.currentInvoice != null && mounted) {
+          await Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => invoice_screen.InvoiceScreen(
@@ -204,14 +207,21 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           );
         }
-      });
-    } else {
-      _commandManager.executeCommand(result, context);
-    }
+      } else {
+        _commandManager.executeCommand(result, context);
+      }
+    }).whenComplete(() {
+      // Re-subscribe after the action is complete and we are back on the home screen.
+      if (mounted) {
+        final speechProvider = Provider.of<SpeechProvider>(context, listen: false);
+        _nluSubscription = speechProvider.nluResultStream.listen(_handleNluResult);
+      }
+    });
   }
 
   void _createNewInvoice({bool showAddItemDialog = false}) {
     final invoiceProvider = Provider.of<InvoiceProvider>(context, listen: false);
+    _nluSubscription?.cancel(); // Cancel subscription before navigating
     invoiceProvider.createNewInvoice().then((_) {
       if (invoiceProvider.currentInvoice != null) {
         print('Navigating to InvoiceScreen for new invoice, showAddItemDialog: $showAddItemDialog');
@@ -220,7 +230,13 @@ class _HomeScreenState extends State<HomeScreen> {
           MaterialPageRoute(
             builder: (context) => invoice_screen.InvoiceScreen(showAddItemDialog: showAddItemDialog),
           ),
-        );
+        ).then((_) {
+          // Re-subscribe when returning to HomeScreen
+          if (mounted) {
+            final speechProvider = Provider.of<SpeechProvider>(context, listen: false);
+            _nluSubscription = speechProvider.nluResultStream.listen(_handleNluResult);
+          }
+        });
       } else {
         print('Failed to create invoice: ${invoiceProvider.errorMessage}');
         ScaffoldMessenger.of(context).showSnackBar(

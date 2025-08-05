@@ -30,6 +30,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> with SingleTickerProvider
   final _notesController = TextEditingController();
   final _commandManager = CommandManager();
   StreamSubscription<NluResult>? _nluSubscription;
+  bool _isProcessingCommand = false;
   late AnimationController _saveButtonController;
   late Animation<Color?> _saveButtonColor;
 
@@ -361,22 +362,36 @@ class _InvoiceScreenState extends State<InvoiceScreen> with SingleTickerProvider
   }
 
   void _handleNluResult(NluResult result) {
-    print('Handling NLU result in InvoiceScreen: ${result.intent}');
-    if (result.intent == 'add_invoice_item') {
-      final description = result.slots['description'];
-      final priceStr = result.slots['price'];
-      final price = priceStr != null ? double.tryParse(priceStr) : null;
+    if (_isProcessingCommand) return;
 
-      if (description != null && price != null && price > 0) {
-        final itemData = {'description': description, 'amount': price};
-        _showAddItemDialog(initialItemData: itemData);
+    setState(() {
+      _isProcessingCommand = true;
+    });
+
+    Future<void>(() async {
+      print('Handling NLU result in InvoiceScreen: ${result.intent}');
+      if (result.intent == 'add_invoice_item') {
+        final description = result.slots['description'];
+        final priceStr = result.slots['price'];
+        final price = priceStr != null ? double.tryParse(priceStr) : null;
+
+        if (description != null && price != null && price > 0) {
+          final itemData = {'description': description, 'amount': price};
+          // Using await here will pause execution until the dialog is closed.
+          await _showAddItemDialog(initialItemData: itemData);
+        } else {
+          _commandManager.executeCommand(result, context);
+        }
       } else {
-        // Let CommandManager handle the feedback for invalid data
         _commandManager.executeCommand(result, context);
       }
-    } else {
-      _commandManager.executeCommand(result, context);
-    }
+    }).whenComplete(() {
+      if (mounted) {
+        setState(() {
+          _isProcessingCommand = false;
+        });
+      }
+    });
   }
 
   void _addNewItem() {
@@ -394,7 +409,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> with SingleTickerProvider
     invoiceProvider.removeItemFromCurrentInvoice(index);
   }
 
-  void _showAddItemDialog({Map<String, dynamic>? initialItemData}) {
+  Future<void> _showAddItemDialog({Map<String, dynamic>? initialItemData}) async {
     print('Opening add item dialog with initial data: $initialItemData');
     final descriptionController = TextEditingController(
       text: initialItemData?['description']?.toString() ?? '',
@@ -403,10 +418,12 @@ class _InvoiceScreenState extends State<InvoiceScreen> with SingleTickerProvider
       text: initialItemData != null ? initialItemData['amount']?.toStringAsFixed(2) : '',
     );
 
+    bool isAutoConfirmed = false; // Prevent multiple auto-confirms
+
     showDialog(
       context: context,
       builder: (context) {
-        if (initialItemData != null) {
+        if (initialItemData != null && !isAutoConfirmed) {
           final description = descriptionController.text.trim();
           final price = double.tryParse(priceController.text) ?? 0.0;
 
@@ -414,10 +431,11 @@ class _InvoiceScreenState extends State<InvoiceScreen> with SingleTickerProvider
           if (description.isNotEmpty && price > 0) {
             print('Scheduling auto-confirm for item: Description=$description, Price=$price');
             Future.delayed(const Duration(milliseconds: 1500), () {
-              if (!mounted) {
-                print('Context not mounted, skipping auto-confirm');
+              if (!mounted || isAutoConfirmed) {
+                print('Context not mounted or already auto-confirmed, skipping');
                 return;
               }
+              isAutoConfirmed = true;
               _saveButtonController.forward().then((_) => _saveButtonController.reset());
               final invoiceProvider = Provider.of<InvoiceProvider>(context, listen: false);
               invoiceProvider.addItemToCurrentInvoice(
