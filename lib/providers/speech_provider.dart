@@ -5,12 +5,12 @@ import '../services/stt_service.dart';
 import '../services/tts_service.dart';
 import '../services/local_nlu_service.dart';
 
-enum VoiceState { idle, listening, processing, error }
+enum VoiceState { idle, wakeword, listening, processing, error }
 
 class SpeechProvider extends ChangeNotifier {
-  final SttService _sttService = SttService();
-  final TtsService _ttsService = TtsService();
   final LocalNluService _nluService = LocalNluService();
+  final TtsService _ttsService = TtsService();
+  late final SttService _sttService; // تأخير إنشاء SttService حتى التهيئة
 
   VoiceState _state = VoiceState.idle;
   String _errorMessage = '';
@@ -24,27 +24,56 @@ class SpeechProvider extends ChangeNotifier {
   String get partialText => _partialText;
   Stream<NluResult> get nluResultStream => _nluResultController.stream;
   bool get isListening => _state == VoiceState.listening;
+  bool get isListeningForWakeword => _state == VoiceState.wakeword;
+
+  SpeechProvider() {
+    // تمرير نفس مثيلات LocalNluService و TtsService إلى SttService
+    _sttService = SttService(nluService: _nluService, ttsService: _ttsService);
+  }
 
   Future<void> initialize() async {
     try {
+      // تهيئة LocalNluService مرة واحدة فقط
       await _nluService.loadIntents();
-      await _sttService.initialize(); // Initialize STT service
-      _state = VoiceState.idle;
+      await _sttService.initialize();
+      // تأخير بدء مستمع الكلمات المفتاحية لتجنب تحميل الخيط الرئيسي
+      Future.delayed(const Duration(milliseconds: 500), () {
+        startWakewordListener();
+      });
     } catch (e) {
       _setError("Failed to initialize services: $e");
     }
     notifyListeners();
   }
 
+  Future<void> startWakewordListener() async {
+    if (_state == VoiceState.listening || _state == VoiceState.wakeword) return;
+    _state = VoiceState.wakeword;
+    notifyListeners();
+
+    await _sttService.listenForWakeword(
+      onWakewordDetected: () {
+        print("SpeechProvider: Wakeword detected, starting command listening.");
+        startListening();
+      },
+    );
+  }
+
   Future<void> startListening() async {
     if (isListening) return;
+    _sttService.cancelWakewordListener();
 
     _clearState();
     _state = VoiceState.listening;
     notifyListeners();
 
     try {
-      final commandText = await _sttService.listen();
+      final commandText = await _sttService.listen(
+        onPartialResult: (partial) {
+          _partialText = partial;
+          notifyListeners();
+        },
+      );
       _state = VoiceState.processing;
       _recognizedText = commandText ?? '';
       notifyListeners();
@@ -59,16 +88,16 @@ class SpeechProvider extends ChangeNotifier {
     } catch (e) {
       _setError("Error during speech recognition: $e");
     } finally {
-      _state = VoiceState.idle;
-      notifyListeners();
+      if (_state != VoiceState.wakeword) {
+        startWakewordListener();
+      }
     }
   }
 
   Future<void> stopListening() async {
     if (isListening) {
       await _sttService.stop();
-      _state = VoiceState.idle;
-      notifyListeners();
+      startWakewordListener();
     }
   }
 
@@ -89,6 +118,10 @@ class SpeechProvider extends ChangeNotifier {
     _errorMessage = message;
     _state = VoiceState.error;
     notifyListeners();
+    // إعادة بدء مستمع الكلمات المفتاحية بعد الخطأ
+    Future.delayed(const Duration(seconds: 1), () {
+      startWakewordListener();
+    });
   }
 
   void _clearState() {
@@ -99,7 +132,7 @@ class SpeechProvider extends ChangeNotifier {
 
   @override
   void dispose() {
-    _sttService.stop();
+    _sttService.cancelWakewordListener();
     _nluResultController.close();
     super.dispose();
   }

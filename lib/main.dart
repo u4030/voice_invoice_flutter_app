@@ -31,10 +31,15 @@ void main() async {
 }
 
 Future<void> _requestPermissions() async {
-  await [
-    Permission.manageExternalStorage,
+  final permissions = [
     Permission.microphone,
-  ].request();
+    Permission.storage, // Use storage instead of manageExternalStorage for broader compatibility
+  ];
+  for (var permission in permissions) {
+    if (await permission.isDenied) {
+      await permission.request();
+    }
+  }
 }
 
 class VoiceInvoiceApp extends StatelessWidget {
@@ -44,7 +49,9 @@ class VoiceInvoiceApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => SpeechProvider()),
+        ChangeNotifierProvider(
+          create: (_) => SpeechProvider()..initialize(),
+        ),
         ChangeNotifierProvider(create: (_) => InvoiceProvider()),
         ChangeNotifierProvider(create: (_) => ExpenseProvider()),
       ],
@@ -67,4 +74,3 @@ class VoiceInvoiceApp extends StatelessWidget {
     );
   }
 }
-
