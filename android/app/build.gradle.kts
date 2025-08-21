@@ -13,6 +13,10 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+
+        // ✅ مهم لتشغيل flutter_local_notifications
+        // ✅ الصيغة الصحيحة مع Kotlin DSL
+        isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
@@ -24,7 +28,7 @@ android {
         applicationId = "com.example.voice_invoice_flutter_app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        minSdk = 30
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -38,6 +42,13 @@ android {
         }
     }
 }
+
+dependencies {
+    implementation("org.jetbrains.kotlin:kotlin-stdlib:${property("kotlin.version")}")
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
+}
+
+
 
 flutter {
     source = "../.."

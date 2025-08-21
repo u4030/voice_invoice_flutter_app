@@ -20,37 +20,45 @@ dependencies:
   # Speech Recognition
   speech_to_text: ^7.1.0
   flutter_tts: ^4.2.3
-  permission_handler: ^12.0.0
-  
+  permission_handler: ^11.0.0
+
   # Database
   sqflite: ^2.4.2
   path: ^1.9.1
   shared_preferences: ^2.5.3
-  
+  archive: ^3.4.2
+  flutter_background_service: ^5.1.0
+  flutter_background_service_android: ^6.3.1
+  flutter_local_notifications: ^19.4.0
+
   # PDF Generation
   pdf: ^3.10.4
   printing: ^5.11.0
   path_provider: ^2.1.1
-  
+
   # Charts and UI
   fl_chart: ^1.0.0
   flutter_staggered_animations: ^1.1.1
-  
+
   # State Management
   provider: ^6.0.5
-  
+
   # Date and Time
   intl_utils: ^2.8.5
-  
+
   # File handling
   file_picker: ^10.2.0
   share_plus: ^11.0.0
-  
+
   # Audio feedback
   audioplayers: ^6.5.0
-  
+
   # Animations
   lottie: ^2.7.0
+
+  vosk_flutter_2: ^1.0.5
+
+  http: ^1.5.0
 
 dev_dependencies:
   flutter_test:
@@ -59,12 +67,14 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  
+
   assets:
     - assets/images/
     - assets/sounds/
     - assets/animations/
     - assets/intents.json
+    - assets/models/vosk-model-ar-mgb2-0.4.zip
+
 
   fonts:
     - family: Cairo
@@ -86,4 +96,3 @@ flutter_intl:
   arb_dir: lib/l10n
   output_dir: lib/generated
   main_locale: ar
-

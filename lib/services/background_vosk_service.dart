@@ -135,10 +135,4 @@ class SpeechProvider extends ChangeNotifier {
     _nluResultController.close();
     super.dispose();
   }
-
-
-  // Programmatically trigger mic button (same as pressing the mic icon)
-  void triggerMicButton() {
-    startVoiceDetection();
-  }
 }

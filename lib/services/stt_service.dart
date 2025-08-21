@@ -26,20 +26,15 @@ class SttService {
     print('Loaded wake words from greet intent: $_wakeWords');
   }
 
-  // التحقق من إذن الميكروفون وإذن التخزين
+  // التحقق من إذن الميكروفون
   Future<bool> _checkPermissions() async {
     final microphoneStatus = await Permission.microphone.request();
-    final storageStatus = await Permission.storage.request();
 
     if (!microphoneStatus.isGranted) {
       print('Microphone permission denied');
       return false;
     }
-    if (!storageStatus.isGranted) {
-      print('Storage permission denied');
-      return false;
-    }
-    print('Microphone and storage permissions granted');
+    print('Microphone permission granted');
     return true;
   }
 

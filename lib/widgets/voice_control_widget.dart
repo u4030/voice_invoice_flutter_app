@@ -338,24 +338,24 @@ class _VoiceControlWidgetState extends State<VoiceControlWidget> with TickerProv
   String _getStatusText(SpeechProvider speechProvider) {
     switch (speechProvider.state) {
       case VoiceState.listening:
-        return 'يستمع الآن...';
+        return 'يستمع الآن للأمر...';
       case VoiceState.wakeword:
-        return "في الانتظار... قل 'مرحبا كنان'";
+        return "في الانتظار... قل 'مرحبا'";
       case VoiceState.processing:
         return 'جاري المعالجة...';
       case VoiceState.error:
-        return 'حدث خطأ، حاول مرة أخرى أو اضغط على الميكروفون';
+        return 'حدث خطأ، يرجى المحاولة مرة أخرى';
       case VoiceState.idle:
       default:
-        return 'اضغط على الميكروفون أو قل "مرحبا كنان"';
+        return 'اضغط على الميكروفون لبدء الاستماع';
     }
   }
 
   void _toggleListening(SpeechProvider speechProvider) {
     if (speechProvider.isListening) {
-      speechProvider.stopListening();
+      speechProvider.stopVoiceDetection();
     } else {
-      speechProvider.startListening();
+      speechProvider.startVoiceDetection();
     }
   }
 

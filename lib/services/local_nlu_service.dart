@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/services.dart' show rootBundle;
 import '../models/nlu_result.dart';
@@ -17,7 +18,7 @@ class _IntentDef {
 class LocalNluService {
   late final List<_IntentDef> _intents;
   late final Map<String, RegExp> _regexMap;
-  bool _isIntentsInitialized = false; // متغير لتتبع حالة التهيئة
+  Completer<void>? _initCompleter;
   final Map<String, String> _numberWords = {
     'واحد': '1',
     'اثنين': '2',
@@ -78,8 +79,9 @@ class LocalNluService {
 
   LocalNluService() {
     _regexMap = {
-      'add_invoice_item': RegExp(r'^(?:ضيفلي|سجلي|ضيف لي|ضيف لي عندك|سجلي عندك)\s+(.+?)(?:\s*ب\s*(\d+(?:\.\d+)?)?)?', caseSensitive: false),
-      'edit_invoice': RegExp(r'^(?:عدّل|غير|تعديل)\s+الفاتورة\s+رقم\s*(\d+)\s*(.+)?', caseSensitive: false),
+      'add_invoice_item': RegExp(
+          r'^(?:ضيف|سجل|ضيفلي|سجلي)\s*(?:لي)?\s*(?:عندك)?\s+(.+?)\s+(?:ب)?(\d+\.?\d*)\s*(?:دينار|دنانير)?$', caseSensitive: false),
+      'edit_invoice': RegExp(r'^(?:عدل|غير)\s+الفاتورة\s+رقم\s*(\d+)\s+إلى\s*(\d+)', caseSensitive: false),
       'delete_item': RegExp(r'^(?:احذف|شيل|امسح)\s+(.+)', caseSensitive: false),
       'query_invoice': RegExp(r'^(?:اعرض|عرض|اطلع لي)\s+الفاتورة\s+رقم\s*(\d+)', caseSensitive: false),
       'print_invoice': RegExp(r'^(?:اطبع|طباعة)', caseSensitive: false),
@@ -87,16 +89,25 @@ class LocalNluService {
     };
   }
 
-  Future<void> loadIntents() async {
-    if (_isIntentsInitialized) {
-      print('Intents already initialized, skipping load.');
-      return;
+  Future<void> loadIntents() {
+    if (_initCompleter == null) {
+      _initCompleter = Completer<void>();
+      _initialize();
     }
-    final String jsonString = await rootBundle.loadString('assets/intents.json');
-    final List<dynamic> jsonData = jsonDecode(jsonString);
-    _intents = jsonData.map((json) => _IntentDef.fromJson(json)).toList();
-    _isIntentsInitialized = true; // تحديث حالة التهيئة
-    print('Intents initialized successfully.');
+    return _initCompleter!.future;
+  }
+
+  Future<void> _initialize() async {
+    try {
+      final String jsonString = await rootBundle.loadString('assets/intents.json');
+      final List<dynamic> jsonData = jsonDecode(jsonString);
+      _intents = jsonData.map((json) => _IntentDef.fromJson(json)).toList();
+      print('Intents initialized successfully.');
+      _initCompleter!.complete();
+    } catch (e) {
+      print('Error initializing intents: $e');
+      _initCompleter!.completeError(e);
+    }
   }
 
   // دالة لاسترداد أنماط نية معينة
